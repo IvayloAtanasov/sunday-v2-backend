@@ -3,9 +3,9 @@ import chromium from '@sparticuz/chromium'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-// import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
-// import { getSecrets } from '../../_shared/src/secrets'
-// import { connectDb } from '../../_shared/src/db'
+import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
+import { getSecrets } from '../../_shared/src/secrets'
+import { connectDb } from '../../_shared/src/db'
 
 const TIMEZONE = 'Europe/Sofia'
 const TIMEZONE_OFFSET = '3.0'
@@ -16,43 +16,52 @@ export const handler = async () => {
   dayjs.extend(utc)
   dayjs.extend(timezone)
 
-  // const secretsClient = new SecretsManagerClient({ region: 'eu-central-1' })
-  // const {
-  //   DB_USER,
-  //   DB_PASSWORD,
-  //   DB_NAME,
-  // } = await getSecrets(secretsClient)
+  const secretsClient = new SecretsManagerClient({ region: 'eu-central-1' })
+  const {
+    FUSIONSOLAR_USERNAME,
+    FUSIONSOLAR_PASSWORD,
+    FUSIONSOLAR_STATION,
+    DB_USER,
+    DB_PASSWORD,
+    DB_NAME,
+  } = await getSecrets(secretsClient)
 
-  // await connectDb(DB_USER, DB_PASSWORD, DB_NAME)
-
-  // TODO:
-  const username = ''
-  const password = ''
-  const stationCode = ''
+  await connectDb(DB_USER, DB_PASSWORD, DB_NAME)
 
   const startOfYesterday = dayjs().tz(TIMEZONE).subtract(1, 'day').startOf('day')
 
-  console.log(`Fetching data of ${stationCode} for ${startOfYesterday.toISOString()}`)
+  console.log(`Fetching data of ${FUSIONSOLAR_STATION} for ${startOfYesterday.toISOString()}`)
 
-  const data = await getFusionsolarIOTData(username, password, stationCode, startOfYesterday)
+  try {
+    const data = await getFusionsolarIOTData(
+      FUSIONSOLAR_USERNAME,
+      FUSIONSOLAR_PASSWORD,
+      FUSIONSOLAR_STATION,
+      startOfYesterday
+    )
+    console.log(JSON.stringify(data, null, 2))
+  } catch (err) {
+    console.error('Caught error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+    throw err;
+  }
 
-  console.log(JSON.stringify(data, null, 2))
 }
 
 const getFusionsolarIOTData = async (username: string, password: string, stationCode: string, date: dayjs.Dayjs) => {
   const browser = await puppeteer.launch({
-    args: [
-      '--start-maximized',
-    ],
-    executablePath: '/usr/bin/google-chrome',
-    defaultViewport: null,
-    headless: false,
+    // args: [
+    //   '--start-maximized',
+    // ],
+    // executablePath: '/usr/bin/google-chrome',
+    // defaultViewport: null,
+    // headless: false,
 
-    // args: chromium.args,
-    // executablePath: await chromium.executablePath(),
-    // defaultViewport: chromium.defaultViewport,
-    // headless: chromium.headless,
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    defaultViewport: chromium.defaultViewport,
+    headless: chromium.headless,
   })
+  await browser.waitForTarget(t => t.type() === 'page')
   const [page] = await browser.pages()
 
   await page.goto('https://eu5.fusionsolar.huawei.com', {
@@ -98,10 +107,10 @@ const getFusionsolarIOTData = async (username: string, password: string, station
 
 // TODO: manual trigger
 // needed only locally
-handler()
-  .then(() => {
-    console.log('Done')
-  })
-  .catch(err => {
-    console.error(err)
-  })
+// handler()
+//   .then(() => {
+//     console.log('Done')
+//   })
+//   .catch(err => {
+//     console.error(err)
+//   })

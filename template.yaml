@@ -17,13 +17,36 @@ Resources:
       Description: 'Sunday Secrets Store'
       SecretString: '{}'
 
+  SundayLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SundayLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SecretAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref SundaySecrets
+
   SundayIOTDataCollectorFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: built/iot-data-collector/src/index.handler
       CodeUri: iot-data-collector
       Runtime: nodejs22.x
-      FunctionName: iot-data-collector
+      FunctionName: sunday-v2-iot-data-collector
       Tags:
         Project: sunday
         Version: 2
@@ -39,8 +62,8 @@ Resources:
           Properties:
             Schedule: cron(0 8-10 * * ? *)
             Enabled: true
-      MemorySize: 256
-      # Role: !GetAtt SundayLambdaExecutionRole.Arn
+      MemorySize: 1024
+      Role: !GetAtt SundayLambdaExecutionRole.Arn
     Metadata:
       BuildProperties:
         UseNpmCi: True

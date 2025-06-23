@@ -3,14 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prebuild": "rimraf built",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.758.0",
     "@sparticuz/chromium": "^133.0.0",
     "dayjs": "^1.11.13",
+    "mongoose": "8.12.0",
     "puppeteer-core": "^24.10.2"
   },
   "devDependencies": {
