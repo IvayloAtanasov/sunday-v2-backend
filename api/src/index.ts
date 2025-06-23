@@ -1,12 +1,9 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb'
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
+import { unmarshall } from '@aws-sdk/util-dynamodb'
 import { PvMetric } from '../../_shared/src/models/PvMetric'
 import { getSecrets } from '../../_shared/src/secrets'
 import { connectDb } from '../../_shared/src/db'
-
-// const dynamo = new DocumentClient()
-// const mongoUri = process.env.MONGODB_URI
-// let mongoClient = null
 
 exports.handler = async (event: any) => {
   console.log('Incoming event:', JSON.stringify(event))
@@ -21,7 +18,7 @@ exports.handler = async (event: any) => {
         body: JSON.stringify(results),
       }
 
-    } else if (path === '/pv-energy') {
+    } else if (path === '/pv-metrics') {
       const results = await getPvEnergy()
 
       return {
@@ -42,19 +39,28 @@ exports.handler = async (event: any) => {
 }
 
 const getEnergyprices = async () => {
-  // --- DynamoDB path ---
-  // const params = {
-  //   TableName: process.env.ENERGY_PRICES_TABLE,
-  //   // you can use KeyConditionExpression here, e.g.:
-  //   // KeyConditionExpression: 'stationId = :sid',
-  //   // ExpressionAttributeValues: { ':sid': 'station-123' }
-  // }
-  // const result = await dynamo.query(params).promise()
-  // return result
+  const dynamoClient = new DynamoDBClient({ region: 'eu-central-1' })
 
-  const mesg = 'hold your horses'
+  try {
+    let lastKey: Record<string, any> | undefined
+    const all = []
 
-  return mesg
+    do {
+      const res = await dynamoClient.send(new ScanCommand({
+        TableName: 'spot-prices',
+        ExclusiveStartKey: lastKey,
+      }))
+      lastKey = res.LastEvaluatedKey
+      if (res.Items) {
+        all.push(...res.Items.map((i: any) => unmarshall(i)))
+      }
+    } while (lastKey)
+
+    return all
+  } catch (err) {
+    console.error('Dynamo scan failed:', err)
+    throw err
+  }
 }
 
 const getPvEnergy = async () => {
