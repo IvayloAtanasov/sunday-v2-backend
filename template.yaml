@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Sunday V2 backend services
+
+Parameters:
+  Env:
+    Type: String
+    Default: Staging
+
+# Note: there is external dependency on sun project (v1) price-collector lambda and dynamodb
+Resources:
+
+  SundaySecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: SundaySecretsStore
+      Description: 'Sunday Secrets Store'
+      SecretString: '{}'
+
+  SundayIOTDataCollectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/iot-data-collector/src/index.handler
+      CodeUri: iot-data-collector
+      Runtime: nodejs22.x
+      FunctionName: iot-data-collector
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Description: Collects IOT data from PV devices
+      Timeout: 900
+      Events:
+        StartScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8-10 * * ? *)
+            Enabled: true
+      MemorySize: 256
+      # Role: !GetAtt SundayLambdaExecutionRole.Arn
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True

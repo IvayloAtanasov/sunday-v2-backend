@@ -1,0 +1,12 @@
+version = 0.1
+[aivo]
+[aivo.deploy]
+[aivo.deploy.parameters]
+stack_name = "lambda-sunday-v2"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1d20u2qnryqd8"
+s3_prefix = "lambda-sunday-v2"
+parameter_overrides = "Env=\"Dev\""
+image_repositories = []

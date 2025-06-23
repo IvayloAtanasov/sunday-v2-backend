@@ -1,0 +1,22 @@
+{
+  "name": "@sunday-v2/iot-data-collector",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@sparticuz/chromium": "^133.0.0",
+    "dayjs": "^1.11.13",
+    "puppeteer-core": "^24.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}
