@@ -7,7 +7,7 @@ export const connectDb = async (
 ): Promise<void> => {
   try {
     const dbName = clusterName
-    const uri = `mongodb+srv://${user}:${password}@${clusterName}.eubbggs.mongodb.net/${dbName}/?retryWrites=true&w=majority&appName=${dbName}`
+    const uri = `mongodb+srv://${user}:${password}@${clusterName}.eubbggs.mongodb.net/${dbName}?retryWrites=true&w=majority`
     await mongoose.connect(uri)
     console.log('MongoDB connected')
   } catch (err) {

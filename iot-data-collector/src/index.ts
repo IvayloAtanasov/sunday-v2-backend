@@ -6,9 +6,14 @@ import timezone from 'dayjs/plugin/timezone'
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
 import { getSecrets } from '../../_shared/src/secrets'
 import { connectDb } from '../../_shared/src/db'
+import { PvMetric } from '../../_shared/src/models/PvMetrics'
 
 const TIMEZONE = 'Europe/Sofia'
 const TIMEZONE_OFFSET = '3.0'
+
+const toRoundedFloat = (str: string) => {
+  return Math.round(parseFloat(str) * 100) / 100
+}
 
 export const handler = async () => {
   console.log('IOT data collector started for installation')
@@ -33,18 +38,46 @@ export const handler = async () => {
   console.log(`Fetching data of ${FUSIONSOLAR_STATION} for ${startOfYesterday.toISOString()}`)
 
   try {
-    const data = await getFusionsolarIOTData(
+    const res: any = await getFusionsolarIOTData(
       FUSIONSOLAR_USERNAME,
       FUSIONSOLAR_PASSWORD,
       FUSIONSOLAR_STATION,
       startOfYesterday
     )
-    console.log(JSON.stringify(data, null, 2))
-  } catch (err) {
-    console.error('Caught error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
-    throw err;
-  }
 
+    if (!res.success) {
+      console.log(JSON.stringify(res))
+      throw new Error('Failed to retrieve iot data')
+    }
+
+    const pvMetric = await PvMetric.findOneAndUpdate(
+      {
+        stationId: FUSIONSOLAR_STATION,
+        date: startOfYesterday.toDate(),
+      },
+      {
+        $set: {
+          stationId: FUSIONSOLAR_STATION,
+          date: startOfYesterday.toDate(), // start of interval
+          totalProductPower: toRoundedFloat(res.data.totalProductPower),
+          totalUsePower: toRoundedFloat(res.data.totalUsePower),
+          totalSelfUsePower: toRoundedFloat(res.data.totalSelfUsePower),
+          selfProvide: toRoundedFloat(res.data.selfProvide),
+          totalOnGridPower: toRoundedFloat(res.data.totalOnGridPower),
+          totalBuyPower: toRoundedFloat(res.data.totalBuyPower)
+        }
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    )
+
+    console.log(`Updated pv metric of ${pvMetric.stationId} for ${pvMetric.date.toISOString()}`)
+  } catch (err) {
+    console.error('Caught error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+    throw err
+  }
 }
 
 const getFusionsolarIOTData = async (username: string, password: string, stationCode: string, date: dayjs.Dayjs) => {
