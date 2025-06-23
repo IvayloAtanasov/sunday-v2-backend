@@ -6,7 +6,7 @@ import timezone from 'dayjs/plugin/timezone'
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
 import { getSecrets } from '../../_shared/src/secrets'
 import { connectDb } from '../../_shared/src/db'
-import { PvMetric } from '../../_shared/src/models/PvMetrics'
+import { PvMetric } from '../../_shared/src/models/PvMetric'
 
 const TIMEZONE = 'Europe/Sofia'
 const TIMEZONE_OFFSET = '3.0'

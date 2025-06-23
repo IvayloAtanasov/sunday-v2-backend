@@ -39,6 +39,17 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref SundaySecrets
+        - PolicyName: DynamoDBReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/spot-prices
 
   SundayIOTDataCollectorFunction:
     Type: AWS::Serverless::Function
@@ -67,3 +78,26 @@ Resources:
     Metadata:
       BuildProperties:
         UseNpmCi: True
+
+  SundayApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/api/src/index.handler
+      CodeUri: api
+      Runtime: nodejs22.x
+      FunctionName: sunday-v2-api
+      Role: !GetAtt SundayLambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Events:
+        GetEnergyPrices:
+          Type: Api
+          Properties:
+            Path: /energy-prices
+            Method: GET
+        GetPvMetrics:
+          Type: Api
+          Properties:
+            Path: /pv-metrics
+            Method: GET
