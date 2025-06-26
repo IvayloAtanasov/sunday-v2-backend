@@ -137,13 +137,3 @@ const getFusionsolarIOTData = async (username: string, password: string, station
 
   return response
 }
-
-// TODO: manual trigger
-// needed only locally
-// handler()
-//   .then(() => {
-//     console.log('Done')
-//   })
-//   .catch(err => {
-//     console.error(err)
-//   })

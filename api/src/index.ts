@@ -11,7 +11,7 @@ exports.handler = async (event: any) => {
 
   try {
     if (path === '/energy-prices') {
-      const results = await getEnergyprices()
+      const results = await getEnergyPrices()
 
       return {
         statusCode: 200,
@@ -38,7 +38,7 @@ exports.handler = async (event: any) => {
   }
 }
 
-const getEnergyprices = async () => {
+const getEnergyPrices = async () => {
   const dynamoClient = new DynamoDBClient({ region: 'eu-central-1' })
 
   try {

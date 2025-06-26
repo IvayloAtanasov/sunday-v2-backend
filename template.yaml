@@ -86,7 +86,10 @@ Resources:
       CodeUri: api
       Runtime: nodejs22.x
       FunctionName: sunday-v2-api
-      Role: !GetAtt SundayLambdaExecutionRole.Arn
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
       Environment:
         Variables:
           Env: !Ref Env
@@ -101,3 +104,36 @@ Resources:
           Properties:
             Path: /pv-metrics
             Method: GET
+      MemorySize: 512
+      Role: !GetAtt SundayLambdaExecutionRole.Arn
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True
+
+  SundayChainlinkYieldSyncer:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/chainlink-yield-syncer/src/index.handler
+      CodeUri: chainlink-yield-syncer
+      Runtime: nodejs22.x
+      FunctionName: sunday-v2-chainlink-yield-syncer
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Description: Triggers Chainlink function to transparently compute installation daily profit based on yield and market prices
+      Timeout: 900
+      Events:
+        StartScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 11 * * ? *)
+            Enabled: true
+      MemorySize: 512
+      Role: !GetAtt SundayLambdaExecutionRole.Arn
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True
