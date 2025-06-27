@@ -3,6 +3,6 @@
   "compilerOptions": {
     "outDir": "./built"
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "src/chainlink-functions/*.deno.js"],
   "exclude": []
 }

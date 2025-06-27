@@ -5,6 +5,7 @@
   "scripts": {
     "prebuild": "rimraf built",
     "build": "tsc -p tsconfig.build.json",
+    "postbuild": "cp -r ./src/chainlink-functions ./built/chainlink-yield-syncer/src/chainlink-functions",
     "prepack": "npm run build"
   },
   "author": "",
@@ -12,7 +13,10 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "3.758.0",
-    "dayjs": "^1.11.13",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "ethers": "^6.13.5",
+    "ethers-v5": "npm:ethers@5.7.0",
     "mongoose": "8.12.0"
   },
   "devDependencies": {
