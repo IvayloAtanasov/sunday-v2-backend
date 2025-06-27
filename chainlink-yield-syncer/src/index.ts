@@ -169,19 +169,18 @@ export const handler = async (event: any) => {
     console.log(`Syncer running for ${installation.stationId}; token id ${installation.tokenId}`)
 
     // build timeframes
-    let lastSynced = startOfDay(toZonedTime(subDays(new Date(), 7), installation.timezone))
+    let syncFrom = startOfDay(toZonedTime(subDays(new Date(), 7), installation.timezone))
     const lastPvYield = await PvYield
       .findOne()
-      .sort({ timestamp: -1 });
-    if (lastPvYield && isAfter(lastPvYield.timestamp, lastSynced)) {
-      lastSynced = lastPvYield.timestamp;
+      .sort({ timestamp: -1 })
+    if (lastPvYield && isAfter(lastPvYield.timestamp, syncFrom)) {
+      // start syncing from the day after last sync date
+      syncFrom = addDays(lastPvYield.timestamp, 1)
     }
 
-    console.log(`Last sync made at ${lastSynced}`)
+    const days = buildTimeframeFrom(syncFrom, installation.timezone)
 
-    const days = buildTimeframeFrom(lastSynced, installation.timezone)
-
-    console.log(`Syncing for ${days.map(d => d.toISOString()).join(', ')}`)
+    console.log(`Starts syncing for [${days.map(d => d.toISOString()).join(', ')}]`)
 
     // sync installation daily yield for the past missing 7 days (max)
     for (const day of days) {
@@ -191,7 +190,7 @@ export const handler = async (event: any) => {
         day.toISOString()
       ]
 
-      console.log(`Syncer request for installation ${args[0]}, date ${args[1]}`)
+      console.log(`Syncer request for installation ${args[0]}, date ${args[2]}`)
 
       // request player fixture rating through call to adapter contract
       // Note: DON will execute fn script 3 times in order to come up with response consensus
