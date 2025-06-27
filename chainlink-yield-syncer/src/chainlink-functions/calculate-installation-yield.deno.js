@@ -2,13 +2,13 @@ const { ethers } = await import('npm:ethers@6.10.0');
 const { isEqual } = await import('npm:date-fns@4.1.0');
 
 // 5% commission for electricity trader, by contract from day ahead market prices
-export const BUYER_DISCOUNT_RATE = 0.05;
+const BUYER_DISCOUNT_RATE = 0.05;
 // 2 EUR commission to cover gas expanses
-export const SUNDAY_COMMISSION = 2;
+const SUNDAY_COMMISSION = 2;
 // corporate tax rate (BG)
-export const CORPORATE_TAX_RATE = 0.1;
+const CORPORATE_TAX_RATE = 0.1;
 // VAT rate (BG)
-export const VAT_RATE = 0.2;
+const VAT_RATE = 0.2;
 
 const host = '9xbie8j9f4.execute-api.eu-central-1.amazonaws.com/Stage';
 
@@ -72,7 +72,6 @@ if (netYield > 0) {
   netYield = taxableRevenue * (1 - CORPORATE_TAX_RATE);
 }
 
-// yield is in EUR, convert to wei
 netYield = BigInt(Math.round(netYield * 1_000_000));
 
 const abiCoder = ethers.AbiCoder.defaultAbiCoder();
