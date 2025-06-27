@@ -162,8 +162,6 @@ export const handler = async (event: any) => {
     await fs.readFile(path.resolve(__dirname, 'chainlink-functions', 'calculate-installation-yield.deno.js'))
   ).toString('utf-8')
 
-  const gasLimit = 300_000
-
   // sync installations one at a time
   for (const installation of installations) {
     console.log(`Syncer running for ${installation.stationId}; token id ${installation.tokenId}`)
@@ -199,6 +197,8 @@ export const handler = async (event: any) => {
         chainlinkYieldAdapterAbi,
         signer
       )
+      const gasLimit = 600_000
+      const chainlinkFunctionGasLimit = 300_000 // max
       const transaction = await chainlinkYieldAdapter.sendRequest(
         source, // code to be executed in DON Deno
         '0x', // user hosted secrets urls, none in this case
@@ -207,8 +207,9 @@ export const handler = async (event: any) => {
         args,
         [], // bytesArgs - arguments can be encoded off-chain to bytes.
         CHAINLINK_SUBSCRIPTION_ID,
-        gasLimit,
-        ethersV5.utils.formatBytes32String(CHAINLINK_FUNCTIONS_DON_ID) // jobId is bytes32 representation of donId
+        chainlinkFunctionGasLimit,
+        ethersV5.utils.formatBytes32String(CHAINLINK_FUNCTIONS_DON_ID), // jobId is bytes32 representation of donId
+        { gasLimit }
       )
 
       console.log(
