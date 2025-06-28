@@ -79,6 +79,16 @@ Resources:
       BuildProperties:
         UseNpmCi: True
 
+  SundayHttpApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: sunday-v2-api-gateway
+      StageName: staging
+      Cors:
+        AllowMethods: "'GET,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+
   SundayApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -100,16 +110,19 @@ Resources:
           Properties:
             Path: /energy-prices
             Method: GET
+            RestApiId: !Ref SundayHttpApi
         GetPvMetrics:
           Type: Api
           Properties:
             Path: /pv-metrics
             Method: GET
+            RestApiId: !Ref SundayHttpApi
         GetInstallations:
           Type: Api
           Properties:
             Path: /installations
             Method: GET
+            RestApiId: !Ref SundayHttpApi
       MemorySize: 512
       Role: !GetAtt SundayLambdaExecutionRole.Arn
     Metadata:

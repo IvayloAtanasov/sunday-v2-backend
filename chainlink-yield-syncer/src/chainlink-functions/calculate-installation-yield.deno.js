@@ -10,7 +10,7 @@ const CORPORATE_TAX_RATE = 0.1;
 // VAT rate (BG)
 const VAT_RATE = 0.2;
 
-const host = '9xbie8j9f4.execute-api.eu-central-1.amazonaws.com/Stage';
+const host = 'p3yujenss0.execute-api.eu-central-1.amazonaws.com/staging';
 
 const stationId = args[0];
 const vaultAddress = args[1];
