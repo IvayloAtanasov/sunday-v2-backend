@@ -105,6 +105,11 @@ Resources:
           Properties:
             Path: /pv-metrics
             Method: GET
+        GetInstallations:
+          Type: Api
+          Properties:
+            Path: /installations
+            Method: GET
       MemorySize: 512
       Role: !GetAtt SundayLambdaExecutionRole.Arn
     Metadata:
