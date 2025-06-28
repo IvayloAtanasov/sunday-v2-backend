@@ -93,6 +93,7 @@ Resources:
       Environment:
         Variables:
           Env: !Ref Env
+      Description: Sunday public API
       Events:
         GetEnergyPrices:
           Type: Api

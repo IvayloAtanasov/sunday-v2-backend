@@ -12,7 +12,7 @@ import {
 
 import { getSecrets } from '../../_shared/src/secrets'
 import { connectDb } from '../../_shared/src/db'
-import { Installation, IInstallation } from './models/Installation'
+import { Installation, IInstallation } from '../../_shared/src/models/Installation'
 import { PvYield } from './models/PvYield'
 import chainlinkYieldAdapterAbi from './contracts/ChainlinkYieldAdapter.json'
 
