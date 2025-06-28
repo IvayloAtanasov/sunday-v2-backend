@@ -5,6 +5,7 @@ export interface IInstallation extends Document {
   tokenId: number;
   vaultAddress: string;
   timezone: string;
+  imageUrl: string;
 }
 
 const InstallationSchema = new Schema<IInstallation>(
@@ -12,7 +13,8 @@ const InstallationSchema = new Schema<IInstallation>(
     stationId: { type: String },
     tokenId: { type: Number },
     vaultAddress: { type: String },
-    timezone: { type: String }
+    timezone: { type: String },
+    imageUrl: { type: String }
   }
 )
 
