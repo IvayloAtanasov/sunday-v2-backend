@@ -75,7 +75,7 @@ Resources:
     Properties:
       Handler: built/iot-data-collector/src/index.handler
       CodeUri: iot-data-collector
-      Runtime: nodejs22.x
+      Runtime: nodejs24.x
       FunctionName: sunday-v2-iot-data-collector
       Tags:
         Project: sunday
@@ -113,7 +113,7 @@ Resources:
     Properties:
       Handler: built/api/src/index.handler
       CodeUri: api
-      Runtime: nodejs22.x
+      Runtime: nodejs24.x
       FunctionName: sunday-v2-api
       Tags:
         Project: sunday
@@ -153,7 +153,7 @@ Resources:
     Properties:
       Handler: built/chainlink-yield-syncer/src/index.handler
       CodeUri: chainlink-yield-syncer
-      Runtime: nodejs22.x
+      Runtime: nodejs24.x
       FunctionName: sunday-v2-chainlink-yield-syncer
       Tags:
         Project: sunday
@@ -183,7 +183,7 @@ Resources:
     Properties:
       Handler: built/price-collector/src/index.handler
       CodeUri: price-collector
-      Runtime: nodejs22.x
+      Runtime: nodejs24.x
       FunctionName: sunday-v2-price-collector
       Tags:
         Project: sunday
