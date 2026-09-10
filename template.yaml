@@ -7,7 +7,6 @@ Parameters:
     Type: String
     Default: Staging
 
-# Note: there is external dependency on sun project (v1) price-collector lambda and dynamodb
 Resources:
 
   SundaySecrets:
@@ -16,6 +15,26 @@ Resources:
       Name: SundaySecretsStore
       Description: 'Sunday Secrets Store'
       SecretString: '{}'
+
+  # Imported from the sun (v1) shareholders stack. Retain is required by
+  # CloudFormation resource import and keeps the data safe if this stack is ever deleted.
+  SpotPricesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: spot-prices
+      KeySchema:
+        - AttributeName: country
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: country
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
 
   SundayLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -49,7 +68,7 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/spot-prices
+                  - !GetAtt SpotPricesTable.Arn
 
   SundayIOTDataCollectorFunction:
     Type: AWS::Serverless::Function
@@ -153,6 +172,39 @@ Resources:
             Enabled: true
       MemorySize: 512
       Role: !GetAtt SundayLambdaExecutionRole.Arn
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True
+
+  # Not on SundayLambdaExecutionRole: that role is read-only on spot-prices and this is
+  # the only function that writes to it.
+  SundayPriceCollectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/price-collector/src/index.handler
+      CodeUri: price-collector
+      Runtime: nodejs22.x
+      FunctionName: sunday-v2-price-collector
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Description: Collects daily electricity prices
+      Timeout: 300
+      Events:
+        StartScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8-10 * * ? *)
+            Enabled: true
+      MemorySize: 256
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SpotPricesTable
     Metadata:
       BuildProperties:
         UseNpmCi: True

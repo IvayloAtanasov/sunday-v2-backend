@@ -1,0 +1,29 @@
+{
+  "name": "@sunday-v2/price-collector",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "prebuild": "rimraf built",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.758.0",
+    "@aws-sdk/lib-dynamodb": "3.758.0",
+    "jsdom": "^22.1.0",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.1",
+    "@types/node": "^22.15.32",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.4"
+  }
+}
