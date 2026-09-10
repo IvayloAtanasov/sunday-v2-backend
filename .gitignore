@@ -6,6 +6,4 @@
 .idea
 test-report.xml
 .npmrc
-# Build config, no credentials: keeps devDependencies out of the Lambda bundle.
-!price-collector/.npmrc
 .env
