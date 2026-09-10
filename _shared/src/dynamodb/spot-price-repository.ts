@@ -1,6 +1,7 @@
 import {
   DynamoDBDocumentClient,
   PutCommand,
+  QueryCommand,
   ScanCommand
 } from '@aws-sdk/lib-dynamodb'
 import type { ScanCommandInput, PutCommandOutput } from '@aws-sdk/lib-dynamodb'
@@ -51,6 +52,33 @@ export class SpotPriceRepository {
     } catch (err) {
       console.error(`Unable to find spot price items`, err)
       throw new Error('spot price repository find failed')
+    }
+  }
+
+  /**
+   * Most recently stored price for a country, or undefined when nothing is stored yet.
+   * Queries the partition backwards so only one item is read.
+   */
+  async findLatest(country: CountriesEnum): Promise<ISpotPrice | undefined> {
+    try {
+      const result = await this.db.send(new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: '#country = :country',
+        ExpressionAttributeNames: {
+          '#country': 'country'
+        },
+        ExpressionAttributeValues: {
+          ':country': country
+        },
+        ScanIndexForward: false,
+        Limit: 1,
+        ReturnConsumedCapacity: 'TOTAL'
+      }))
+
+      return result.Items?.[0] as ISpotPrice | undefined
+    } catch (err) {
+      console.error(`Unable to find latest spot price`, err)
+      throw new Error('spot price repository find latest failed')
     }
   }
 
