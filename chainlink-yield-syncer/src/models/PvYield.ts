@@ -21,4 +21,8 @@ const PvYieldSchema = new Schema<IPvYield>(
   }
 )
 
+// Serves both the per-station "last synced day" lookup and the upsert below it,
+// which key on the same pair.
+PvYieldSchema.index({ stationId: 1, timestamp: -1 })
+
 export const PvYield = mongoose.model<IPvYield>('PvYield', PvYieldSchema)

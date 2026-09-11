@@ -169,7 +169,7 @@ export const handler = async (event: any) => {
     // build timeframes
     let syncFrom = startOfDay(toZonedTime(subDays(new Date(), 7), installation.timezone))
     const lastPvYield = await PvYield
-      .findOne()
+      .findOne({ stationId: installation.stationId })
       .sort({ timestamp: -1 })
     if (lastPvYield && isAfter(lastPvYield.timestamp, syncFrom)) {
       // start syncing from the day after last sync date
