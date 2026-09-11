@@ -34,15 +34,20 @@ const validateRes = async (res) => {
   }
 };
 
+// Both endpoints default to the last 7 days and cap any range at 7 days. We only ever
+// need the single instant we are pricing, so ask for from == to.
+const dayParam = encodeURIComponent(date.toISOString());
+const range = `from=${dayParam}&to=${dayParam}`;
+
 const fetchEnergyPrices = Functions.makeHttpRequest({
-  url: `https://${host}/energy-prices`,
+  url: `https://${host}/energy-prices?${range}`,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
 const fetchPvMetrics = Functions.makeHttpRequest({
-  url: `https://${host}/pv-metrics`,
+  url: `https://${host}/pv-metrics?${range}`,
   headers: {
     'Content-Type': 'application/json'
   }

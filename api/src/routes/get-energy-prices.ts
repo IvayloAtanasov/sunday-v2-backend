@@ -1,27 +1,22 @@
-import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb'
-import { unmarshall } from '@aws-sdk/util-dynamodb'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 
-export const getEnergyPrices = async () => {
-  const dynamoClient = new DynamoDBClient({ region: 'eu-central-1' })
+import {
+  SpotPriceRepository,
+  CountriesEnum,
+  ISpotPrice
+} from '../../../_shared/src/dynamodb/spot-price-repository'
+import { DateRange } from '../date-range'
 
-  try {
-    let lastKey: Record<string, any> | undefined
-    const all = []
+export const getEnergyPrices = async ({ from, to }: DateRange): Promise<ISpotPrice[]> => {
+  const db = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'eu-central-1' }))
+  const repository = new SpotPriceRepository(db)
 
-    do {
-      const res = await dynamoClient.send(new ScanCommand({
-        TableName: 'spot-prices',
-        ExclusiveStartKey: lastKey,
-      }))
-      lastKey = res.LastEvaluatedKey
-      if (res.Items) {
-        all.push(...res.Items.map((i: any) => unmarshall(i)))
-      }
-    } while (lastKey)
+  // One query per partition - cheaper than scanning the table, and there is only
+  // a handful of countries.
+  const byCountry = await Promise.all(
+    Object.values(CountriesEnum).map(country => repository.findBetween(country, from, to))
+  )
 
-    return all
-  } catch (err) {
-    console.error('Dynamo scan failed:', err)
-    throw err
-  }
+  return byCountry.flat()
 }

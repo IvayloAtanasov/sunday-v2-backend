@@ -24,4 +24,9 @@ export const PvMetricSchema = new Schema<IPvMetric>(
   }
 )
 
+// The api reads these by date window, and the collector upserts by station + date.
+// Without these both are collection scans.
+PvMetricSchema.index({ date: 1 })
+PvMetricSchema.index({ stationId: 1, date: 1 })
+
 export const PvMetric = mongoose.model<IPvMetric>('PvMetric', PvMetricSchema)

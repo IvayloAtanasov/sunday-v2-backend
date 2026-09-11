@@ -5,7 +5,7 @@
   "description": "Sunday V2 backend services - see README.md",
   "scripts": {
     "bootstrap": "npm ci --prefix _shared && npm ci --prefix api && npm ci --prefix chainlink-yield-syncer && npm ci --prefix iot-data-collector && npm ci --prefix price-collector",
-    "test": "npm test --prefix price-collector",
+    "test": "npm test --prefix price-collector && npm test --prefix api",
     "build": "sam build"
   },
   "license": "ISC"

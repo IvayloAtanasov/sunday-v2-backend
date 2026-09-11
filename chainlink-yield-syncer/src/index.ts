@@ -190,7 +190,7 @@ export const handler = async (event: any) => {
 
       console.log(`Syncer request for installation ${args[0]}, date ${args[2]}`)
 
-      // request player fixture rating through call to adapter contract
+      // request installation yield through call to adapter contract
       // Note: DON will execute fn script 3 times in order to come up with response consensus
       const chainlinkYieldAdapter = new ethers.Contract(
         CHAINLINK_SUBSCRIPTION_CONSUMER_ADDRESS,

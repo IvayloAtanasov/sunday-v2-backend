@@ -4,7 +4,7 @@ import {
   QueryCommand,
   ScanCommand
 } from '@aws-sdk/lib-dynamodb'
-import type { ScanCommandInput, PutCommandOutput } from '@aws-sdk/lib-dynamodb'
+import type { ScanCommandInput, QueryCommandInput, PutCommandOutput } from '@aws-sdk/lib-dynamodb'
 
 export enum CountriesEnum {
   bg = 'BG'
@@ -16,6 +16,9 @@ export interface ISpotPrice {
   timestampISO: string,
   price: number
 }
+
+// Stored timestamps are unix seconds - see the price-collector writing them.
+const toUnixSeconds = (date: Date) => Math.floor(date.valueOf() / 1000)
 
 export class SpotPriceRepository {
   private readonly tableName = 'spot-prices'
@@ -52,6 +55,48 @@ export class SpotPriceRepository {
     } catch (err) {
       console.error(`Unable to find spot price items`, err)
       throw new Error('spot price repository find failed')
+    }
+  }
+
+  /**
+   * Prices for a country within an inclusive instant range, oldest first.
+   * Queries the partition by sort key so only the requested window is read.
+   */
+  async findBetween(country: CountriesEnum, from: Date, to: Date): Promise<ISpotPrice[]> {
+    const items: ISpotPrice[] = []
+    let lastEvaluatedKey: QueryCommandInput['ExclusiveStartKey']
+
+    try {
+      do {
+        const result = await this.db.send(new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: '#country = :country AND #timestamp BETWEEN :from AND :to',
+          ExpressionAttributeNames: {
+            '#country': 'country',
+            '#timestamp': 'timestamp'
+          },
+          ExpressionAttributeValues: {
+            ':country': country,
+            ':from': toUnixSeconds(from),
+            ':to': toUnixSeconds(to)
+          },
+          ExclusiveStartKey: lastEvaluatedKey,
+          ReturnConsumedCapacity: 'TOTAL'
+        }))
+
+        console.debug(`Fetched batch of ${result.Count} items`, {
+          consumedCapacity: result.ConsumedCapacity,
+          lastEvaluatedKey: result.LastEvaluatedKey
+        })
+
+        items.push(...(result.Items ?? []) as ISpotPrice[])
+        lastEvaluatedKey = result.LastEvaluatedKey
+      } while (lastEvaluatedKey)
+
+      return items
+    } catch (err) {
+      console.error(`Unable to find spot prices between ${from.toISOString()} and ${to.toISOString()}`, err)
+      throw new Error('spot price repository find between failed')
     }
   }
 
