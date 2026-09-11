@@ -75,7 +75,11 @@ Resources:
     Properties:
       Handler: built/iot-data-collector/src/index.handler
       CodeUri: iot-data-collector
-      Runtime: nodejs24.x
+      # Pinned to 22.x: @sparticuz/chromium 133 picks its bundled shared libraries by
+      # matching "20.x"/"22.x" in AWS_EXECUTION_ENV. On nodejs24.x it falls through to
+      # the AL2 bundle, which omits libnspr4.so, and chromium fails to launch.
+      # Upgrading chromium to >=149 is the prerequisite for bumping this to 24.x.
+      Runtime: nodejs22.x
       FunctionName: sunday-v2-iot-data-collector
       Tags:
         Project: sunday
