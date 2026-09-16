@@ -152,13 +152,15 @@ Resources:
       BuildProperties:
         UseNpmCi: True
 
-  SundayChainlinkYieldSyncer:
+  # Reads only. Yield reaches the chain through the CRE workflow, not through this function,
+  # which is why it holds no key.
+  SundayBlockchainIndexerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: built/chainlink-yield-syncer/src/index.handler
-      CodeUri: chainlink-yield-syncer
+      Handler: built/blockchain-indexer/src/index.handler
+      CodeUri: blockchain-indexer
       Runtime: nodejs24.x
-      FunctionName: sunday-v2-chainlink-yield-syncer
+      FunctionName: sunday-v2-blockchain-indexer
       Tags:
         Project: sunday
         Version: 2
@@ -166,13 +168,14 @@ Resources:
       Environment:
         Variables:
           Env: !Ref Env
-      Description: Triggers Chainlink function to transparently compute installation daily profit based on yield and market prices
+      Description: Indexes YieldReceiver rebase events into Mongo
       Timeout: 900
       Events:
         StartScheduledEvent:
           Type: Schedule
           Properties:
-            Schedule: cron(0 11 * * ? *)
+            # Must stay behind the CRE workflow's cron, which Phase 3 sets
+            Schedule: cron(0 12 * * ? *)
             Enabled: true
       MemorySize: 512
       Role: !GetAtt SundayLambdaExecutionRole.Arn

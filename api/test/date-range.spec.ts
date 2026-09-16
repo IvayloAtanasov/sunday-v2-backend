@@ -2,32 +2,20 @@ import { describe, expect, it } from 'vitest'
 
 import { BadRequestError, MAX_RANGE_DAYS, parseDateRange } from '../src/date-range'
 
-const now = new Date('2026-09-11T08:00:00.000Z')
 const days = (n: number) => n * 24 * 60 * 60 * 1000
 
 describe('parseDateRange', () => {
-  it('defaults to the last 7 days when nothing is passed', () => {
-    expect(parseDateRange(undefined, now)).toEqual({
-      from: new Date('2026-09-04T08:00:00.000Z'),
-      to: now
-    })
-  })
-
-  it('defaults the same way for an empty query string', () => {
-    expect(parseDateRange({}, now)).toEqual(parseDateRange(null, now))
-  })
-
   it('returns a single instant when from and to are equal', () => {
     const day = '2026-09-09T21:00:00.000Z'
 
-    expect(parseDateRange({ from: day, to: day }, now)).toEqual({
+    expect(parseDateRange({ from: day, to: day })).toEqual({
       from: new Date(day),
       to: new Date(day)
     })
   })
 
   it('honours an explicit range inside the maximum', () => {
-    expect(parseDateRange({ from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' }, now))
+    expect(parseDateRange({ from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' }))
       .toEqual({
         from: new Date('2026-09-01T00:00:00.000Z'),
         to: new Date('2026-09-03T00:00:00.000Z')
@@ -38,7 +26,7 @@ describe('parseDateRange', () => {
     const from = new Date('2026-09-01T00:00:00.000Z')
     const to = new Date(from.valueOf() + days(MAX_RANGE_DAYS))
 
-    expect(parseDateRange({ from: from.toISOString(), to: to.toISOString() }, now))
+    expect(parseDateRange({ from: from.toISOString(), to: to.toISOString() }))
       .toEqual({ from, to })
   })
 
@@ -46,48 +34,36 @@ describe('parseDateRange', () => {
     const from = new Date('2026-09-01T00:00:00.000Z')
     const to = new Date(from.valueOf() + days(MAX_RANGE_DAYS) + 1)
 
-    expect(() => parseDateRange({ from: from.toISOString(), to: to.toISOString() }, now))
+    expect(() => parseDateRange({ from: from.toISOString(), to: to.toISOString() }))
       .toThrow(BadRequestError)
-  })
-
-  it('derives to from a lone from, capped at the maximum', () => {
-    expect(parseDateRange({ from: '2026-09-01T00:00:00.000Z' }, now)).toEqual({
-      from: new Date('2026-09-01T00:00:00.000Z'),
-      to: new Date('2026-09-08T00:00:00.000Z')
-    })
-  })
-
-  it('derives from from a lone to, capped at the maximum', () => {
-    expect(parseDateRange({ to: '2026-09-08T00:00:00.000Z' }, now)).toEqual({
-      from: new Date('2026-09-01T00:00:00.000Z'),
-      to: new Date('2026-09-08T00:00:00.000Z')
-    })
   })
 
   it('rejects from after to', () => {
-    expect(() => parseDateRange({ from: '2026-09-09T00:00:00.000Z', to: '2026-09-08T00:00:00.000Z' }, now))
+    expect(() => parseDateRange({ from: '2026-09-09T00:00:00.000Z', to: '2026-09-08T00:00:00.000Z' }))
       .toThrow(BadRequestError)
   })
 
-  it.each(['not-a-date', '2026-13-45', ''])('ignores or rejects %o rather than returning NaN bounds', (value) => {
-    const result = (() => {
-      try {
-        return parseDateRange({ from: value }, now)
-      } catch (err) {
-        return err
-      }
-    })()
+  // A window relative to now differs between the CRE nodes requesting it, so a missing
+  // bound has to fail rather than be filled in.
+  it.each([
+    ['neither bound', undefined],
+    ['an empty query string', {}],
+    ['a lone from', { from: '2026-09-01T00:00:00.000Z' }],
+    ['a lone to', { to: '2026-09-08T00:00:00.000Z' }],
+    ['an empty bound', { from: '', to: '2026-09-08T00:00:00.000Z' }]
+  ])('rejects %s rather than defaulting the window', (_label, params) => {
+    expect(() => parseDateRange(params)).toThrow(BadRequestError)
+  })
 
-    if (result instanceof Error) {
-      expect(result).toBeInstanceOf(BadRequestError)
-    } else {
-      // empty string falls back to the default window
-      expect(Number.isNaN((result as any).from.valueOf())).toBe(false)
-      expect(Number.isNaN((result as any).to.valueOf())).toBe(false)
-    }
+  it.each(['not-a-date', '2026-13-45'])('rejects %o rather than returning NaN bounds', (value) => {
+    expect(() => parseDateRange({ from: value, to: value })).toThrow(BadRequestError)
   })
 
   it('reports which parameter was invalid', () => {
-    expect(() => parseDateRange({ to: 'rubbish' }, now)).toThrow(/'to'/)
+    expect(() => parseDateRange({ from: '2026-09-01T00:00:00.000Z', to: 'rubbish' })).toThrow(/'to'/)
+  })
+
+  it('reports which parameter was missing', () => {
+    expect(() => parseDateRange({ from: '2026-09-01T00:00:00.000Z' })).toThrow(/'to'/)
   })
 })

@@ -10,8 +10,6 @@ vi.mock('../src/routes/get-installations', () => ({ getInstallations }))
 
 const { handler } = await import('../src/index')
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
-
 describe('handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -34,11 +32,11 @@ describe('handler', () => {
     expect(getPvEnergy).toHaveBeenCalledWith({ from: new Date(day), to: new Date(day) })
   })
 
-  it('falls back to a 7 day window when no params are given', async () => {
-    await handler({ path: '/pv-metrics', queryStringParameters: null })
+  it('answers 400 when no window is given, rather than assuming one', async () => {
+    const res = await handler({ path: '/pv-metrics', queryStringParameters: null })
 
-    const { from, to } = getPvEnergy.mock.calls[0][0] as unknown as { from: Date, to: Date }
-    expect(to.valueOf() - from.valueOf()).toBe(SEVEN_DAYS_MS)
+    expect(res.statusCode).toBe(400)
+    expect(getPvEnergy).not.toHaveBeenCalled()
   })
 
   it('answers 400 rather than 500 for an unparseable date', async () => {
@@ -62,7 +60,8 @@ describe('handler', () => {
   it('answers 500 when a route fails', async () => {
     getPvEnergy.mockRejectedValueOnce(new Error('mongo is down') as never)
 
-    const res = await handler({ path: '/pv-metrics', queryStringParameters: null })
+    const day = '2026-09-09T21:00:00.000Z'
+    const res = await handler({ path: '/pv-metrics', queryStringParameters: { from: day, to: day } })
 
     expect(res.statusCode).toBe(500)
   })
