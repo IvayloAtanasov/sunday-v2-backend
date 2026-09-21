@@ -152,8 +152,8 @@ Resources:
       BuildProperties:
         UseNpmCi: True
 
-  # Reads only. Yield reaches the chain through the CRE workflow, not through this function,
-  # which is why it holds no key.
+  # Reads only. Production reaches the chain through the publisher functions, not through this
+  # one, which is why it holds no key.
   SundayBlockchainIndexerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -168,13 +168,13 @@ Resources:
       Environment:
         Variables:
           Env: !Ref Env
-      Description: Indexes YieldReceiver rebase events into Mongo
+      Description: Indexes YieldAdapter rebase events into Mongo
       Timeout: 900
       Events:
         StartScheduledEvent:
           Type: Schedule
           Properties:
-            # Must stay behind the CRE workflow's cron, which Phase 3 sets
+            # Must stay behind yield-publisher at 11:00, which is what it indexes
             Schedule: cron(0 12 * * ? *)
             Enabled: true
       MemorySize: 512
@@ -212,6 +212,84 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref SpotPricesTable
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True
+
+  # The two publishers hold the only key in this stack. It can assert a realized market price and
+  # a production reading, and nothing else: the premium is computed on chain from those two
+  # inputs, and both are bounded there. Neither is on SundayLambdaExecutionRole, which is shared
+  # by the keyless functions and deliberately stays that way.
+  #
+  # Ordering across the day matters and is not enforced anywhere but here:
+  #   08-10  price-collector   scrapes yesterday's settled price into DynamoDB
+  #   10:30  price-publisher   writes the prices that are still missing on chain
+  #   11:00  yield-publisher   submits production, which the adapter prices against them
+  #   12:00  blockchain-indexer reads back what happened
+  # A publisher that runs early simply finds nothing to do and the next day catches up, bounded
+  # by the vaults' 7 day staleness window.
+  SundayPricePublisherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/price-publisher/src/index.handler
+      CodeUri: price-publisher
+      Runtime: nodejs24.x
+      FunctionName: sunday-v2-price-publisher
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Description: Publishes realized electricity prices to EnergyPriceOracle
+      Timeout: 300
+      Events:
+        StartScheduledEvent:
+          Type: Schedule
+          Properties:
+            # Behind price-collector, ahead of yield-publisher
+            Schedule: cron(30 10 * * ? *)
+            Enabled: true
+      MemorySize: 512
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SundaySecrets
+        - DynamoDBReadPolicy:
+            TableName: !Ref SpotPricesTable
+    Metadata:
+      BuildProperties:
+        UseNpmCi: True
+
+  SundayYieldPublisherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: built/yield-publisher/src/index.handler
+      CodeUri: yield-publisher
+      Runtime: nodejs24.x
+      FunctionName: sunday-v2-yield-publisher
+      Tags:
+        Project: sunday
+        Version: 2
+        Env: !Ref Env
+      Environment:
+        Variables:
+          Env: !Ref Env
+      Description: Submits measured production to YieldAdapter, which prices it on chain
+      Timeout: 900
+      Events:
+        StartScheduledEvent:
+          Type: Schedule
+          Properties:
+            # Behind price-publisher, ahead of blockchain-indexer
+            Schedule: cron(0 11 * * ? *)
+            Enabled: true
+      MemorySize: 512
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SundaySecrets
     Metadata:
       BuildProperties:
         UseNpmCi: True

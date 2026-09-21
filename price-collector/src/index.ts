@@ -3,8 +3,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import moment from 'moment-timezone'
 import { ApiClient } from './api-client'
 import { SpotPriceRepository, CountriesEnum } from '../../_shared/src/dynamodb/spot-price-repository'
-
-const TIMEZONE = 'Europe/Sofia'
+import { localDayStart } from '../../_shared/src/day-key'
 
 // The site is a free scrape target - don't hammer it while backfilling.
 const DELAY_BETWEEN_DAYS_MS = 3000
@@ -37,15 +36,15 @@ export const daysToCollect = (
 export const handler = async () => {
   console.log('Triggered price-collector')
 
-  const target = moment().tz(TIMEZONE).subtract(1, 'd').startOf('day')
+  // Yesterday: the most recent day whose price has actually settled. The bucketing comes from
+  // _shared so that this feed and the production feed cannot drift on what a day's key is.
+  const target = localDayStart(new Date(), 1)
 
   const db = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'eu-central-1' }))
   const dbClient = new SpotPriceRepository(db)
 
   const latest = await dbClient.findLatest(CountriesEnum.bg)
-  const lastStored = latest
-    ? moment.unix(latest.timestamp).tz(TIMEZONE).startOf('day')
-    : undefined
+  const lastStored = latest ? localDayStart(latest.timestamp * 1000) : undefined
 
   const days = daysToCollect(lastStored, target)
 

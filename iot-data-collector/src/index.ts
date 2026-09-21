@@ -1,14 +1,13 @@
 import puppeteer from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
-import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
+import moment from 'moment-timezone'
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
 import { getSecrets } from '../../_shared/src/secrets'
 import { connectDb } from '../../_shared/src/db'
 import { PvMetric } from '../../_shared/src/models/PvMetric'
+import { STATION_TIMEZONE, localDayStart } from '../../_shared/src/day-key'
 
-const TIMEZONE = 'Europe/Sofia'
+const TIMEZONE = STATION_TIMEZONE
 const TIMEZONE_OFFSET = '3.0'
 
 const toRoundedFloat = (str: string) => {
@@ -17,9 +16,6 @@ const toRoundedFloat = (str: string) => {
 
 export const handler = async () => {
   console.log('IOT data collector started for installation')
-
-  dayjs.extend(utc)
-  dayjs.extend(timezone)
 
   const secretsClient = new SecretsManagerClient({ region: 'eu-central-1' })
   const {
@@ -33,7 +29,9 @@ export const handler = async () => {
 
   await connectDb(DB_USER, DB_PASSWORD, DB_NAME)
 
-  const startOfYesterday = dayjs().tz(TIMEZONE).subtract(1, 'day').startOf('day')
+  // The period key comes from _shared, so this feed and the price feed cannot disagree on what a
+  // day is - the contracts join a production reading to its price by equality on that number.
+  const startOfYesterday = localDayStart(new Date(), 1)
 
   console.log(`Fetching data of ${FUSIONSOLAR_STATION} for ${startOfYesterday.toISOString()}`)
 
@@ -80,7 +78,7 @@ export const handler = async () => {
   }
 }
 
-const getFusionsolarIOTData = async (username: string, password: string, stationCode: string, date: dayjs.Dayjs) => {
+const getFusionsolarIOTData = async (username: string, password: string, stationCode: string, date: moment.Moment) => {
   const browser = await puppeteer.launch({
     // args: [
     //   '--start-maximized',

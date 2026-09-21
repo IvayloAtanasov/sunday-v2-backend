@@ -43,8 +43,8 @@ describe('parseDateRange', () => {
       .toThrow(BadRequestError)
   })
 
-  // A window relative to now differs between the CRE nodes requesting it, so a missing
-  // bound has to fail rather than be filled in.
+  // A window relative to now makes the same request return different rows depending on when it
+  // was asked, so a missing bound has to fail rather than be filled in.
   it.each([
     ['neither bound', undefined],
     ['an empty query string', {}],

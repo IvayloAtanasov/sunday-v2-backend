@@ -3,18 +3,25 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run && TZ=UTC vitest run && TZ=America/Los_Angeles vitest run",
+    "test:watch": "vitest"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.758.0",
     "@aws-sdk/client-secrets-manager": "3.758.0",
     "@aws-sdk/lib-dynamodb": "3.758.0",
+    "ethers": "^6.13.5",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
     "mongoose": "8.12.0"
   }
 }

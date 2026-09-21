@@ -3,14 +3,23 @@ import mongoose, { Document, Schema } from 'mongoose'
 /**
  * `applied` - the vault accepted the rebase and `owed` moved.
  * `failed` - the vault rejected it: stale, replayed, out of bounds, or past its term.
- * `unregistered` - the receiver had no registration for the vault and skipped it.
+ * `unregistered` - the adapter had no registration for the vault and skipped it.
+ * `price-missing` - no price was published for that period yet, so nothing could be computed.
+ * `production-rejected` - the reading was above what the installation can physically produce.
+ *
+ * Only `applied` moved money. The rest are records of a period that did not accrue, and of why.
  */
-export type YieldStatus = 'applied' | 'failed' | 'unregistered'
+export type YieldStatus =
+  | 'applied'
+  | 'failed'
+  | 'unregistered'
+  | 'price-missing'
+  | 'production-rejected'
 
 /**
  * One reported vault-day, as the chain recorded it.
  *
- * Read-only downstream of the chain: it is written by the indexer from YieldReceiver events
+ * Read-only downstream of the chain: it is written by the indexer from YieldAdapter events
  * and never drives a decision about what to report next. That is `lastRebasedAt` on the vault.
  */
 export interface IPvYield extends Document {
@@ -19,6 +28,13 @@ export interface IPvYield extends Document {
   valueDelta?: string;
   timestamp: Date;
   status: YieldStatus;
+  /**
+   * The two inputs the premium was computed from, as the adapter saw them. Kept so a rebase can
+   * be recomputed from this record without replaying the chain, and so a wrong figure can be
+   * traced to whichever input was wrong.
+   */
+  energyMilliKwh?: string;
+  priceMicroPerMwh?: string;
   /** Raw revert data from the vault, for a failed day. */
   reason?: string;
   blockNumber: number;
@@ -34,7 +50,13 @@ const PvYieldSchema = new Schema<IPvYield>(
     vaultAddress: { type: String, required: true },
     valueDelta: { type: String }, // must fit int256, though in reality it won't come close
     timestamp: { type: Date, required: true },
-    status: { type: String, required: true, enum: ['applied', 'failed', 'unregistered'] },
+    status: {
+      type: String,
+      required: true,
+      enum: ['applied', 'failed', 'unregistered', 'price-missing', 'production-rejected']
+    },
+    energyMilliKwh: { type: String },
+    priceMicroPerMwh: { type: String },
     reason: { type: String },
     blockNumber: { type: Number, required: true },
     transactionHash: { type: String, required: true },

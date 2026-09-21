@@ -20,7 +20,7 @@ export interface BlockRange {
  *
  * An event inside the buffer is upserted onto itself. One a reorg took away stops being
  * re-reported and its record lingers - a stale row in a read model, not a missed rebase,
- * since the vault's own state is what the workflow reads to decide what to report next.
+ * since the vault's own state is what the publisher reads to decide what to report next.
  */
 export const startBlock = (deployBlock: number, lastIndexedBlock?: number): number =>
   lastIndexedBlock === undefined

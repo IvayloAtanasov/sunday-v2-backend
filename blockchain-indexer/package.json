@@ -11,7 +11,7 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "Indexes YieldReceiver events into Mongo",
+  "description": "Indexes YieldAdapter events into Mongo",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "3.758.0",
     "ethers": "^6.13.5",

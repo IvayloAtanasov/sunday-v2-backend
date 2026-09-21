@@ -8,25 +8,30 @@ import { PvYield } from '../../_shared/src/models/PvYield'
 import { IndexerCursor } from './models/IndexerCursor'
 import { nextRange, startBlock } from './block-range'
 import { txLink } from './explorer'
-import { ReceiverEvent, toBulkOps, toYieldRecords } from './yield-events'
-import yieldReceiverAbi from './contracts/YieldReceiver.json'
+import { AdapterEvent, toBulkOps, toYieldRecords } from './yield-events'
+import yieldAdapterAbi from '../../_shared/src/contracts/YieldAdapter.json'
 
 const VAULT_ABI = ['function rebaseAdapter() view returns (address)']
 
-const INDEXED_EVENTS = ['Rebased', 'RebaseFailed', 'UnregisteredVault']
+const INDEXED_EVENTS = [
+  'Rebased',
+  'RebaseFailed',
+  'UnregisteredVault',
+  'PriceMissing',
+  'ProductionRejected',
+]
 
 /**
- * Reads YieldReceiver events into Mongo.
+ * Reads YieldAdapter events into Mongo.
  *
- * It holds no key and sends no transaction. The CRE workflow is what moves yield on chain;
- * this writes down what the chain already said, so the app has something to read that is not
- * an RPC call. If it stops, vaults keep accruing and the records catch up on the next run.
+ * It holds no key and sends no transaction. The yield-publisher is what moves production on
+ * chain; this writes down what the chain already said, so the app has something to read that is
+ * not an RPC call. If it stops, vaults keep accruing and the records catch up on the next run.
  *
- * The receivers to read are derived from the installations rather than configured. A frozen
- * workflow ID means a changed formula needs a new receiver, so vaults accumulate across
- * receiver generations, and each vault names its own in `rebaseAdapter()` - frozen at funding
- * close by R-19. A configured address would have indexed one generation and silently dropped
- * the rest.
+ * The adapters to read are derived from the installations rather than configured. The formula is
+ * frozen per adapter, so changing a rate needs a new adapter, and vaults accumulate across
+ * adapter generations with each one naming its own in `rebaseAdapter()` - frozen when its funding
+ * closed. A configured address would have indexed one generation and silently dropped the rest.
  */
 export const handler = async () => {
   const secretsClient = new SecretsManagerClient({ region: 'eu-central-1' })
@@ -35,7 +40,7 @@ export const handler = async () => {
     DB_PASSWORD,
     DB_NAME,
     RPC_URL,
-    FIRST_RECEIVER_DEPLOY_BLOCK,
+    FIRST_ADAPTER_DEPLOY_BLOCK,
     EXPLORER_URL,
   } = await getSecrets(secretsClient)
 
@@ -49,15 +54,15 @@ export const handler = async () => {
   }
 
   const provider = new ethers.JsonRpcProvider(RPC_URL)
-  const receiverInterface = new ethers.Interface(yieldReceiverAbi)
-  const topics = [INDEXED_EVENTS.map(name => receiverInterface.getEvent(name)!.topicHash)]
+  const adapterInterface = new ethers.Interface(yieldAdapterAbi)
+  const topics = [INDEXED_EVENTS.map(name => adapterInterface.getEvent(name)!.topicHash)]
 
   const stationByVault = new Map<string, string>(
     installations.map(installation => [installation.vaultAddress.toLowerCase(), installation.stationId])
   )
 
-  // Each vault names the receiver it is bound to. Several vaults normally share one.
-  const receivers = new Set<string>()
+  // Each vault names the adapter it is bound to. Several vaults normally share one.
+  const adapters = new Set<string>()
 
   for (const installation of installations) {
     try {
@@ -69,7 +74,7 @@ export const handler = async () => {
         continue
       }
 
-      receivers.add(ethers.getAddress(adapter))
+      adapters.add(ethers.getAddress(adapter))
     } catch (err) {
       // One unreachable or non-vault address must not cost the other installations their run.
       console.error(`${installation.stationId}: cannot read rebaseAdapter, skipping`, err)
@@ -78,17 +83,17 @@ export const handler = async () => {
 
   const latestBlock = await provider.getBlockNumber()
 
-  // Floor for a receiver with no cursor yet. A later receiver generation re-reads from here
+  // Floor for an adapter with no cursor yet. A later adapter generation re-reads from here
   // too, which costs empty getLogs windows but cannot miss anything.
-  const deployBlock = Number(FIRST_RECEIVER_DEPLOY_BLOCK)
+  const deployBlock = Number(FIRST_ADAPTER_DEPLOY_BLOCK)
 
   console.log(
-    `Indexing ${receivers.size} receiver(s) for ${installations.length} installation(s) ` +
+    `Indexing ${adapters.size} adapter(s) for ${installations.length} installation(s) ` +
     `up to block ${latestBlock}`
   )
 
-  for (const receiverAddress of receivers) {
-    const cursor = await IndexerCursor.findOne({ receiverAddress })
+  for (const adapterAddress of adapters) {
+    const cursor = await IndexerCursor.findOne({ adapterAddress })
     let fromBlock = startBlock(deployBlock, cursor?.lastIndexedBlock)
     let indexed = 0
 
@@ -101,28 +106,31 @@ export const handler = async () => {
       }
 
       const logs = await provider.getLogs({
-        address: receiverAddress,
+        address: adapterAddress,
         topics,
         fromBlock: range.fromBlock,
         toBlock: range.toBlock,
       })
 
-      const events: ReceiverEvent[] = logs.map(log => {
-        const parsed = receiverInterface.parseLog(log)!
+      const events: AdapterEvent[] = logs.map(log => {
+        const parsed = adapterInterface.parseLog(log)!
+        const has = (field: string) => parsed.fragment.inputs.some(input => input.name === field)
 
         return {
           name: parsed.name,
           vault: parsed.args.vault,
-          updatedAt: parsed.args.updatedAt,
-          delta: parsed.name === 'Rebased' ? parsed.args.delta : undefined,
-          reason: parsed.name === 'RebaseFailed' ? parsed.args.reason : undefined,
+          periodStart: parsed.args.periodStart,
+          delta: has('delta') ? parsed.args.delta : undefined,
+          energyMilliKwh: has('energyMilliKwh') ? parsed.args.energyMilliKwh : undefined,
+          priceMicroPerMwh: has('priceMicroPerMwh') ? parsed.args.priceMicroPerMwh : undefined,
+          reason: has('reason') ? parsed.args.reason : undefined,
           blockNumber: log.blockNumber,
           transactionHash: log.transactionHash,
           logIndex: log.index,
         }
       })
 
-      // Every event the receiver emitted, not only the vaults in Mongo: a vault whose
+      // Every event the adapter emitted, not only the vaults in Mongo: a vault whose
       // installation record is missing is still recorded, just without a station.
       const records = toYieldRecords(events, stationByVault)
 
@@ -141,14 +149,14 @@ export const handler = async () => {
       }
 
       await IndexerCursor.findOneAndUpdate(
-        { receiverAddress },
-        { receiverAddress, lastIndexedBlock: range.toBlock },
+        { adapterAddress },
+        { adapterAddress, lastIndexedBlock: range.toBlock },
         { upsert: true }
       )
 
       fromBlock = range.toBlock + 1
     }
 
-    console.log(`${receiverAddress}: indexed ${indexed} event(s) up to block ${fromBlock - 1}`)
+    console.log(`${adapterAddress}: indexed ${indexed} event(s) up to block ${fromBlock - 1}`)
   }
 }

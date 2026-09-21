@@ -30,8 +30,9 @@ const parseInstant = (name: string, value: string | undefined): Date => {
  * Inclusive instant window to read, never wider than MAX_RANGE_DAYS so one request cannot
  * read the whole table. Passing the same value for both reads one point in time.
  *
- * Both bounds are required: a default window relative to now would give each CRE node
- * requesting it a slightly different one, and the workflow run would fail consensus.
+ * Both bounds are required rather than defaulted. A window relative to now makes a response
+ * depend on when it was asked for, which is not something a caller can cache, compare or
+ * reproduce - and these rows are what a lender would check a rebase against.
  */
 export const parseDateRange = (params: QueryStringParameters): DateRange => {
   const from = parseInstant('from', params?.from)
