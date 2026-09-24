@@ -176,7 +176,8 @@ Resources:
           Properties:
             # Must stay behind yield-publisher at 11:00, which is what it indexes
             Schedule: cron(0 12 * * ? *)
-            Enabled: true
+            # Off until getLogs is paged: the free RPC tier caps a query at 10 blocks
+            Enabled: false
       MemorySize: 512
       Role: !GetAtt SundayLambdaExecutionRole.Arn
     Metadata:
